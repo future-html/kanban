@@ -501,7 +501,7 @@ def delete_task():
          return jsonify({"error": "Invalid ID format"}), 400
 
 
-# 1. GET /user: List all users EXCEPT the currently logged-in user
+# 1. GET /user: List users EXCEPT owner and ALREADY INVITED members
 @app.route('/user', methods=['GET'])
 def get_all_other_users():
     owner_id = request.args.get('ownerId')
@@ -510,18 +510,35 @@ def get_all_other_users():
         return jsonify({"error": "ownerId query parameter is required"}), 400
 
     try:
-        # Find all users where _id is NOT EQUAL ($ne) to the ownerId
+        owner_oid = ObjectId(owner_id)
+        
+        # --- NEW: Step 1. Get the current dashboard to find existing members ---
+        owner_dashboard = todolist_collection.find_one({"userId": owner_oid})
+        
+        # Initialize our "do not show" list with the owner's ID
+        ids_to_exclude = [owner_oid]
+        
+        # If the dashboard exists and has members, add them to the exclusion list
+        if owner_dashboard and "member" in owner_dashboard:
+            ids_to_exclude.extend(owner_dashboard["member"])
+            
+        # --- NEW: Step 2. Find users where _id is NOT IN ($nin) the exclusion list ---
         # {"password": 0} excludes the password field from the results
-        users = list(user_collection.find({"_id": {"$ne": ObjectId(owner_id)}}, {"password": 0}))
+        users = list(user_collection.find(
+            {"_id": {"$nin": ids_to_exclude}}, 
+            {"password": 0}
+        ))
         
         # Convert ObjectIds to string for JSON serialization
         for user in users:
             user['_id'] = str(user['_id'])
             
         return jsonify(users), 200
-    except Exception:
-        return jsonify({"error": "Invalid ownerId format"}), 400
-
+        
+    except Exception as e:
+        # Good practice: print the exception to the console so you know if it's a DB error vs ID error
+        print(f"Error fetching users: {e}") 
+        return jsonify({"error": "Invalid ownerId format or database error"}), 400
 
 
 @app.route('/user/invite', methods=['POST'])
