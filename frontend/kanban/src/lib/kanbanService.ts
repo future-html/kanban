@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000'; // Adjust if needed
+// IMPORTANT: Ensure this matches your Flask backend port (usually 5000, not 3000)
+const API_BASE_URL = 'http://localhost:3000'; 
 
 // --- BOARD SERVICE ---
 export const boardService = {
@@ -11,7 +12,11 @@ export const boardService = {
   updateBoard: (dashboardId, boardId, newName) => 
     axios.put(`${API_BASE_URL}/board`, { dashboardId, boardId, newValueOfBoardName: newName }),
   deleteBoards: (userId, dashboardId, boardIds) => 
-    axios.delete(`${API_BASE_URL}/board`, { data: { userId, dashboardId, boardId: boardIds } })
+    axios.delete(`${API_BASE_URL}/board`, { data: { userId, dashboardId, boardId: boardIds } }),
+    
+  // NEW: Get users who can be assigned to tasks on a specific dashboard
+  getAssignableMembers: (dashboardId) => 
+    axios.get(`${API_BASE_URL}/board/members`, { params: { dashboardId } })
 };
 
 // --- COLUMN SERVICE ---
@@ -31,16 +36,17 @@ export const taskService = {
   updateTask: (dashboardId, boardId, columnId, taskId, newName) => 
     axios.put(`${API_BASE_URL}/board/task`, { dashboardId, boardId, columnId, taskId, newValueOfTaskName: newName }),
   deleteTask: (userId, dashboardId, boardId, columnId, taskIds) => 
-    // Added boardId to payload because your backend needs it for array_filters
-    axios.delete(`${API_BASE_URL}/board/task`, { data: { userId, dashboardId, boardId, columnId, taskId: taskIds } })
+    axios.delete(`${API_BASE_URL}/board/task`, { data: { userId, dashboardId, boardId, columnId, taskId: taskIds } }),
+    
+  // NEW: Assign a task to a user
+  assignTask: (dashboardId, boardId, columnId, taskId, assigneeId) => 
+    axios.put(`${API_BASE_URL}/board/task/assign`, { dashboardId, boardId, columnId, taskId, assigneeId })
 };
 
+// --- USER SERVICE ---
 export const userService = {
-  // Get all users except the current owner
   getAllOtherUsers: (ownerId) => 
     axios.get(`${API_BASE_URL}/user`, { params: { ownerId } }),
-
-  // Invite selected users to the owner's dashboard
   inviteUsers: (ownerId, memberIds) => 
     axios.post(`${API_BASE_URL}/user/invite`, { ownerId, memberId: memberIds })
 };

@@ -3,23 +3,35 @@ import { boardService, columnService, taskService, userService } from '../lib/ka
 
 const Home = ({ userId }) => {
   const [dashboards, setDashboards] = useState([]);
+  const [dashboardMembers, setDashboardMembers] = useState({}); 
+
   const [newBoardName, setNewBoardName] = useState('');
-  
-  // Input states mapping specific IDs to input values
   const [newColNames, setNewColNames] = useState({});
   const [newTaskNames, setNewTaskNames] = useState({});
-  
-  // Editing states tracking which item is currently being edited
   const [editState, setEditState] = useState({ type: null, id: null, name: '' });
 
+  // Invite System State
   const [showInviteMenu, setShowInviteMenu] = useState(false);
   const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
 
+  // --- API CALLS ---
   const fetchBoards = async () => {
     try {
       const res = await boardService.getBoards(userId);
-      setDashboards(res.data);
+      const fetchedDashboards = res.data;
+      setDashboards(fetchedDashboards);
+
+      const membersMap = {};
+      for (const dash of fetchedDashboards) {
+        try {
+          const membersRes = await boardService.getAssignableMembers(dash._id);
+          membersMap[dash._id] = membersRes.data;
+        } catch (memberErr) {
+          console.error(`Failed to fetch members for dashboard ${dash._id}`, memberErr);
+        }
+      }
+      setDashboardMembers(membersMap);
     } catch (err) {
       console.error("Error fetching boards", err);
     }
@@ -29,7 +41,7 @@ const Home = ({ userId }) => {
     if (userId) fetchBoards();
   }, [userId]);
 
-  // --- BOARDS ---
+  // --- HANDLERS ---
   const handleCreateBoard = async (e) => {
     e.preventDefault();
     if (!newBoardName.trim()) return;
@@ -57,7 +69,6 @@ const Home = ({ userId }) => {
     } catch (err) { alert("Error deleting board"); }
   };
 
-  // --- COLUMNS ---
   const handleCreateColumn = async (dashboardId, boardId) => {
     const colName = newColNames[boardId];
     if (!colName || !colName.trim()) return;
@@ -85,7 +96,6 @@ const Home = ({ userId }) => {
     } catch (err) { alert("Error deleting column"); }
   };
 
-  // --- TASKS ---
   const handleCreateTask = async (dashboardId, boardId, columnId) => {
     const taskName = newTaskNames[columnId];
     if (!taskName || !taskName.trim()) return;
@@ -113,25 +123,29 @@ const Home = ({ userId }) => {
     } catch (err) { alert("Error deleting task"); }
   };
 
-  // --- NEW: Invite Logic ---
+  const handleAssignTask = async (dashboardId, boardId, columnId, taskId, assigneeId) => {
+    try {
+      await taskService.assignTask(dashboardId, boardId, columnId, taskId, assigneeId);
+      fetchBoards();
+    } catch (err) {
+      alert("Error assigning task");
+    }
+  };
+
   const toggleInviteMenu = async () => {
     const willShow = !showInviteMenu;
     setShowInviteMenu(willShow);
-    
-    // Fetch users only when opening the menu
     if (willShow) {
       try {
         const res = await userService.getAllOtherUsers(userId);
         setAvailableUsers(res.data);
-      } catch (err) {
-        console.error("Error fetching users", err);
-      }
+      } catch (err) { console.error("Error fetching users", err); }
     }
   };
 
   const handleToggleUserSelection = (id) => {
     setSelectedUserIds(prev => 
-      prev.includes(id) ? prev.filter(userId => userId !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
     );
   };
 
@@ -143,12 +157,10 @@ const Home = ({ userId }) => {
     try {
       await userService.inviteUsers(userId, selectedUserIds);
       alert("Users invited successfully!");
-      setSelectedUserIds([]); // Clear selections
-      setShowInviteMenu(false); // Close menu
-      fetchBoards(); // Refresh boards to ensure latest data
-    } catch (err) {
-      alert("Error sending invites");
-    }
+      setSelectedUserIds([]); 
+      setShowInviteMenu(false); 
+      fetchBoards(); 
+    } catch (err) { alert("Error sending invites"); }
   };
 
   const handleLogout = () => {
@@ -156,13 +168,15 @@ const Home = ({ userId }) => {
     window.location.href = '/login';
   };
 
-  // --- RENDER HELPERS ---
   const startEdit = (type, id, currentName) => {
     setEditState({ type, id, name: currentName });
   };
 
+  // --- RENDER ---
   return (
     <div style={{ padding: '20px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+      
+      {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <h2>My Workspace</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -173,7 +187,7 @@ const Home = ({ userId }) => {
         </div>
       </header>
 
-      {/* --- NEW: Invite Menu UI --- */}
+      {/* INVITE MENU */}
       {showInviteMenu && (
         <div style={{ padding: '15px', border: '1px solid #007bff', borderRadius: '8px', marginBottom: '20px', backgroundColor: '#f8f9fa' }}>
           <h3>Invite Team Members</h3>
@@ -188,7 +202,7 @@ const Home = ({ userId }) => {
                     checked={selectedUserIds.includes(user._id)}
                     onChange={() => handleToggleUserSelection(user._id)}
                   />
-                  {user.email} {/* Assuming your user object has an email field. Change to user.username if applicable */}
+                  {user.email}
                 </label>
               ))}
             </div>
@@ -198,7 +212,8 @@ const Home = ({ userId }) => {
           </button>
         </div>
       )}
-      
+
+      {/* CREATE BOARD FORM */}
       <form onSubmit={handleCreateBoard} style={{ marginBottom: '30px' }}>
         <input 
           value={newBoardName} 
@@ -212,6 +227,7 @@ const Home = ({ userId }) => {
       {/* RENDER DASHBOARDS */}
       {dashboards.map(dash => {
         const isOwner = dash.userId === userId;
+        const assignableUsers = dashboardMembers[dash._id] || [];
 
         return (
           <div key={dash._id} style={{ border: '2px solid #444', borderRadius: '8px', marginBottom: '40px', padding: '20px' }}>
@@ -221,7 +237,7 @@ const Home = ({ userId }) => {
             {dash.todos.map(board => (
               <div key={board._id} style={{ border: '1px solid #ccc', margin: '20px 0', padding: '15px', backgroundColor: '#f5f5f5' }}>
                 
-                {/* Board Header */}
+                {/* BOARD HEADER */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
                   {editState.type === 'board' && editState.id === board._id ? (
                     <div>
@@ -238,7 +254,7 @@ const Home = ({ userId }) => {
                   )}
                 </div>
 
-                {/* Create Column Input */}
+                {/* CREATE COLUMN INPUT */}
                 <div style={{ marginBottom: '15px' }}>
                   <input 
                     placeholder="New Column Name" 
@@ -248,12 +264,12 @@ const Home = ({ userId }) => {
                   <button onClick={() => handleCreateColumn(dash._id, board._id)}>Add Column</button>
                 </div>
 
-                {/* RENDER COLUMNS (Horizontal Layout) */}
+                {/* RENDER COLUMNS */}
                 <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '10px' }}>
                   {board.columns?.map(col => (
                     <div key={col._id} style={{ minWidth: '250px', backgroundColor: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}>
                       
-                      {/* Column Header */}
+                      {/* COLUMN HEADER */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
                         {editState.type === 'column' && editState.id === col._id ? (
                           <div>
@@ -276,25 +292,43 @@ const Home = ({ userId }) => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
                         {col.tasks?.map(task => (
                           <div key={task._id} style={{ backgroundColor: '#e9ecef', padding: '8px', borderRadius: '4px', fontSize: '14px' }}>
+                            
                             {editState.type === 'task' && editState.id === task._id ? (
                               <div>
                                 <input value={editState.name} onChange={(e) => setEditState({ ...editState, name: e.target.value })} style={{ width: '90%' }} autoFocus/>
                                 <button onClick={() => handleUpdateTask(dash._id, board._id, col._id, task._id)}>✓</button>
                               </div>
                             ) : (
-                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>{task.taskName}</span>
-                                <div>
-                                  <button onClick={() => startEdit('task', task._id, task.taskName)} style={{ fontSize: '10px' }}>✎</button>
-                                  {isOwner && <button onClick={() => handleDeleteTask(dash._id, board._id, col._id, task._id)} style={{ color: 'red', fontSize: '10px' }}>✗</button>}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <strong>{task.taskName}</strong>
+                                  <div>
+                                    <button onClick={() => startEdit('task', task._id, task.taskName)} style={{ fontSize: '10px' }}>✎</button>
+                                    {isOwner && <button onClick={() => handleDeleteTask(dash._id, board._id, col._id, task._id)} style={{ color: 'red', fontSize: '10px' }}>✗</button>}
+                                  </div>
                                 </div>
+                                
+                                {/* ASSIGNEE DROPDOWN */}
+                                <select 
+                                  value={task.assignee || ""}
+                                  onChange={(e) => handleAssignTask(dash._id, board._id, col._id, task._id, e.target.value)}
+                                  style={{ fontSize: '12px', padding: '2px', marginTop: '4px' }}
+                                >
+                                  <option value="">Unassigned</option>
+                                  {assignableUsers.map(user => (
+                                    <option key={user._id} value={user._id}>
+                                      {user.email || "Unknown User"} 
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                             )}
+
                           </div>
                         ))}
                       </div>
 
-                      {/* Create Task Input */}
+                      {/* CREATE TASK INPUT */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <input 
                           placeholder="New Task" 

@@ -566,6 +566,43 @@ def invite_user():
          return jsonify({"error": "Invalid ID format"}), 400
 
 
+# GET /board/members: Get all users (owner + members) who can be assigned to tasks in a dashboard
+@app.route('/board/members', methods=['GET'])
+def get_assignable_members():
+    dashboard_id = request.args.get('dashboardId')
+
+    if not dashboard_id:
+        return jsonify({"error": "dashboardId query parameter is required"}), 400
+
+    try:
+        # 1. Find the specific dashboard
+        dashboard = todolist_collection.find_one({"_id": ObjectId(dashboard_id)})
+        
+        if not dashboard:
+            return jsonify({"error": "Dashboard not found"}), 404
+
+        # 2. Combine the owner (userId) and all invited members into a single list
+        assignable_ids = [dashboard["userId"]]
+        
+        if "member" in dashboard and isinstance(dashboard["member"], list):
+            assignable_ids.extend(dashboard["member"])
+
+        # 3. Fetch the actual user details from the user collection
+        #    {"password": 0} ensures we don't accidentally send passwords to the frontend
+        users = list(user_collection.find(
+            {"_id": {"$in": assignable_ids}},
+            {"password": 0}
+        ))
+
+        # 4. Convert ObjectIds to strings for JSON serialization
+        for user in users:
+            user['_id'] = str(user['_id'])
+
+        return jsonify(users), 200
+
+    except Exception as e:
+        print(f"Error fetching assignable members: {e}")
+        return jsonify({"error": "Invalid dashboardId format or database error"}), 400
 
 @app.route('/board/task/assign', methods=['PUT'])
 def assign_task():
