@@ -229,9 +229,30 @@ const Home = ({ userId }) => {
         const isOwner = dash.userId === userId;
         const assignableUsers = dashboardMembers[dash._id] || [];
 
+        // NEW: Separate the owner and the members to display them nicely
+        const ownerUser = assignableUsers.find(user => user._id === dash.userId);
+        const memberUsers = assignableUsers.filter(user => user._id !== dash.userId);
         return (
           <div key={dash._id} style={{ border: '2px solid #444', borderRadius: '8px', marginBottom: '40px', padding: '20px' }}>
-            <h3>{isOwner ? "Personal Dashboard" : "Shared Dashboard"}</h3>
+            {/* UPDATED: Dashboard Header with Team List */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #ccc', paddingBottom: '15px' }}>
+              <h3 style={{ margin: 0 }}>{isOwner ? "Owner Dashboard" : "Shared Dashboard"}</h3>
+              
+              {/* TEAM MEMBERS DISPLAY */}
+              <div style={{ textAlign: 'right', fontSize: '14px', color: '#555' }}>
+                <div style={{ marginBottom: '4px' }}>
+                  <strong>Owner:</strong> {ownerUser ? ownerUser.username : 'Unknown'}
+                </div>
+                {memberUsers.length > 0 && (
+                  <div>
+                    <strong>Members:</strong> {memberUsers.map(m => m.username).join(', ')}
+                  </div>
+                )}
+                {memberUsers.length === 0 && (
+                  <div style={{ fontStyle: 'italic', fontSize: '12px' }}>No invited members</div>
+                )}
+              </div>
+            </div>
             
             {/* RENDER BOARDS */}
             {dash.todos.map(board => (

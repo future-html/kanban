@@ -611,12 +611,18 @@ def assign_task():
     board_id = data.get('boardId')
     column_id = data.get('columnId')
     task_id = data.get('taskId')
-    assignee_id = data.get('assigneeId') # The new user being assigned
+    
+    # Safely get the assignee_id (defaults to empty string if missing)
+    assignee_id = data.get('assigneeId', "") 
 
-    if not all([dashboard_id, board_id, column_id, task_id, assignee_id]):
-        return jsonify({"error": "dashboardId, boardId, columnId, taskId, and assigneeId are required"}), 400
+    # Removed assignee_id from this check so empty strings are allowed!
+    if not dashboard_id or not board_id or not column_id or not task_id:
+        return jsonify({"error": "dashboardId, boardId, columnId, and taskId are required"}), 400
 
     try:
+        # The Magic Fix: If we have an ID, convert it. If it's empty, leave it as an empty string.
+        db_assignee_value = ObjectId(assignee_id) if assignee_id else ""
+
         result = todolist_collection.update_one(
             {
                 "_id": ObjectId(dashboard_id),
@@ -625,8 +631,7 @@ def assign_task():
                 "todos.columns.tasks._id": ObjectId(task_id)
             },
             {
-                # Target the assignee field. Assuming assigneeId is stored as an ObjectId!
-                "$set": {"todos.$[board].columns.$[col].tasks.$[task].assignee": ObjectId(assignee_id)}
+                "$set": {"todos.$[board].columns.$[col].tasks.$[task].assignee": db_assignee_value}
             },
             array_filters=[
                 {"board._id": ObjectId(board_id)},
@@ -639,10 +644,9 @@ def assign_task():
             return jsonify({"error": "Dashboard, Board, Column, or Task not found"}), 404
             
         return jsonify({"message": "Task assigned successfully"}), 200
-    except Exception:
-        return jsonify({"error": "Invalid ID format"}), 400
-    
-    
+    except Exception as e:
+        print(f"Error assigning task: {e}") # Helps you debug in the terminal!
+        return jsonify({"error": "Invalid ID format"}), 400  
     
 @app.route('/board/task/move', methods=['PUT'])
 def move_task():
