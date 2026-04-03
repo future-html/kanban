@@ -97,27 +97,6 @@ def login():
         return jsonify({"error": "Invalid email or password"}), 401
 
 
-# 1. GET /user: List all users EXCEPT the currently logged-in user
-@app.route('/user', methods=['GET'])
-def get_all_other_users():
-    owner_id = request.args.get('ownerId')
-    
-    if not owner_id:
-        return jsonify({"error": "ownerId query parameter is required"}), 400
-
-    try:
-        # Find all users where _id is NOT EQUAL ($ne) to the ownerId
-        # {"password": 0} excludes the password field from the results
-        users = list(user_collection.find({"_id": {"$ne": ObjectId(owner_id)}}, {"password": 0}))
-        
-        # Convert ObjectIds to string for JSON serialization
-        for user in users:
-            user['_id'] = str(user['_id'])
-            
-        return jsonify(users), 200
-    except Exception:
-        return jsonify({"error": "Invalid ownerId format"}), 400
-
 
 
 # 3. POST /board: Add a new board
@@ -189,30 +168,6 @@ def create_board():
     
 
 # 2. POST /user/invite: Invite users to a board
-@app.route('/user/invite', methods=['POST'])
-def invite_user():
-    data = request.get_json()
-    owner_id = data.get('ownerId')
-    member_ids = data.get('memberId', []) # Expects a list of string IDs
-    
-    if not owner_id or not member_ids:
-        return jsonify({"error": "ownerId and memberId list are required"}), 400
-
-    try:
-        # Convert list of string IDs to list of ObjectIds
-        member_object_ids = [ObjectId(m_id) for m_id in member_ids]
-        
-        # $addToSet with $each adds multiple members WITHOUT creating duplicates
-        todolist_collection.update_one(
-            {"userId": ObjectId(owner_id)},
-            {"$addToSet": {"member": {"$each": member_object_ids}}}
-        )
-        
-        # As requested, just return successfully message
-        return jsonify({"message": "successfully"}), 200
-    except Exception:
-         return jsonify({"error": "Invalid ID format"}), 400
-
 
 
 # 4. GET /board: Get boards where user is owner OR a member
@@ -544,6 +499,55 @@ def delete_task():
         
     except Exception:
          return jsonify({"error": "Invalid ID format"}), 400
+
+
+# 1. GET /user: List all users EXCEPT the currently logged-in user
+@app.route('/user', methods=['GET'])
+def get_all_other_users():
+    owner_id = request.args.get('ownerId')
+    
+    if not owner_id:
+        return jsonify({"error": "ownerId query parameter is required"}), 400
+
+    try:
+        # Find all users where _id is NOT EQUAL ($ne) to the ownerId
+        # {"password": 0} excludes the password field from the results
+        users = list(user_collection.find({"_id": {"$ne": ObjectId(owner_id)}}, {"password": 0}))
+        
+        # Convert ObjectIds to string for JSON serialization
+        for user in users:
+            user['_id'] = str(user['_id'])
+            
+        return jsonify(users), 200
+    except Exception:
+        return jsonify({"error": "Invalid ownerId format"}), 400
+
+
+
+@app.route('/user/invite', methods=['POST'])
+def invite_user():
+    data = request.get_json()
+    owner_id = data.get('ownerId')
+    member_ids = data.get('memberId', []) # Expects a list of string IDs
+    
+    if not owner_id or not member_ids:
+        return jsonify({"error": "ownerId and memberId list are required"}), 400
+
+    try:
+        # Convert list of string IDs to list of ObjectIds
+        member_object_ids = [ObjectId(m_id) for m_id in member_ids]
+        
+        # $addToSet with $each adds multiple members WITHOUT creating duplicates
+        todolist_collection.update_one(
+            {"userId": ObjectId(owner_id)},
+            {"$addToSet": {"member": {"$each": member_object_ids}}}
+        )
+        
+        # As requested, just return successfully message
+        return jsonify({"message": "successfully"}), 200
+    except Exception:
+         return jsonify({"error": "Invalid ID format"}), 400
+
 
 
 @app.route('/board/task/assign', methods=['PUT'])
