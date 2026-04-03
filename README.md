@@ -1,19 +1,15 @@
-This is a solid setup for a full-stack Kanban application. Since you're putting this on GitHub, a clear `README.md` is essential so others (or future you) can get it running without a headache.
 
-Here is the formatted Markdown. You can copy-paste this directly into a file named `README.md` in your project root.
+#  Kanban Project
+[ER diagram](https://drive.google.com/file/d/1SgB2hvKsV0qvYBblpGrCRSZd22nhWxLL/view?usp=sharing)
 
----
-
-# 📋 Kanban Project
-
-A full-stack Kanban board application featuring a **React** frontend and a **Flask (Python)** backend with **MongoDB**.
+A Kanban board application featuring a **React** frontend and a **Flask (Python)** backend with **MongoDB**.
 
 ## 🚀 Getting Started
 
 First, clone the repository to your local machine:
 
 ```bash
-git clone <your-repo-url>
+git clone git@github.com:future-html/kanban.git
 cd kanban
 ```
 
@@ -36,7 +32,7 @@ npm install
 # Start the development server
 npm run dev
 ```
-> The frontend typically runs on `http://localhost:5173` (Vite default).
+> The frontend runs on `http://localhost:5173` (Vite default).
 
 ---
 
@@ -62,7 +58,7 @@ pip install flask flask-cors pymongo python-dotenv certifi
 # Run the server
 python3 app.py
 ```
-> The backend typically runs on `http://localhost:5000`.
+> The backend runs on `http://localhost:3000`.
 
 ---
 
@@ -77,3 +73,6 @@ python3 app.py
 
 ## 📝 Note on Environment Variables
 Ensure you create a `.env` file in the `backend/` directory to store your MongoDB connection strings and other sensitive data before running the app.
+
+# .env (mongodb database for development only)
+MONGO_URI="mongodb+srv://futurewp286_db_user:2SEUMBioRF4RhEVX@cluster0.jeftwxk.mongodb.net/?appName=Cluster0"
