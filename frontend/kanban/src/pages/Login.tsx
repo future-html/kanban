@@ -22,7 +22,7 @@ export const Login = ({ setAuth }) => {
     try {
       // Note: Make sure your Flask backend is running on 5000, 
       // your snippet says 3000, which is usually the React port!
-      const response = await axios.post('http://localhost:5000/login', formData);
+      const response = await axios.post('http://localhost:3000/login', formData);
 
       const { userInfo } = response.data;
 
