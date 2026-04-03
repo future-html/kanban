@@ -3,7 +3,7 @@
 
 [API docs](https://docs.google.com/document/d/1NMy-IEl838X7jUFdH3SNNQQqre0rbyuALvx6AXui8gs/edit?usp=sharing)
 [ER diagram](https://drive.google.com/file/d/1SgB2hvKsV0qvYBblpGrCRSZd22nhWxLL/view?usp=sharing)
-
+[Video demo](https://github.com/user-attachments/assets/ffdc9fec-5b44-4fde-99dd-a0152471d6ef)
 A Kanban board application featuring a **React** frontend and a **Flask (Python)** backend with **MongoDB**.
 
 ## 🚀 Getting Started
