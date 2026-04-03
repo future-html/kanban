@@ -264,13 +264,11 @@ def delete_boards():
          return jsonify({"error": "Invalid ID format"}), 400
 
 
-
 @app.route('/board/column', methods=['POST'])
 def create_column(): 
-    # {, userId, dashboardId, boardId, columnName}
     data = request.get_json()
-    user_id = data.get('userId')  # <--- Changed to userId
-    dashboard_id = data.get('dashboardId') # need to pass dashboardId to find where column are pushed / spliced
+    user_id = data.get('userId')  
+    dashboard_id = data.get('dashboardId') 
     board_id = data.get('boardId')
     column_name = data.get('columnName')
 
@@ -279,53 +277,69 @@ def create_column():
 
     try:
         new_column = {
-            "_id": ObjectId(), # Generate a new unique ID for this board
+            "_id": ObjectId(), 
             "columnName": column_name,
-            "tasks": [] # Initialize with empty columns
+            "tasks": [] 
         }
 
-
-        
-        
-        todolist_collection.update_one(
-            {"userId": ObjectId(user_id), "_id": ObjectId(dashboard_id), "todos._id": ObjectId(board_id)},
+        # THE FIX: Check if user is the owner OR a member
+        result = todolist_collection.update_one(
+            {
+                "_id": ObjectId(dashboard_id), 
+                "$or": [
+                    {"userId": ObjectId(user_id)}, 
+                    {"member": ObjectId(user_id)}
+                ],
+                "todos._id": ObjectId(board_id)
+            },
             {
                 "$push": {"todos.$.columns": new_column}
-            },
-          
+            }
         )
         
+        if result.matched_count == 0:
+            return jsonify({"error": "Dashboard/Board not found or unauthorized"}), 403
+            
         return jsonify({
             "message": "Column created successfully", 
             "columnId": str(new_column["_id"])
         }), 201
-    except Exception:
-        return jsonify({"error": "Invalid userId format"}), 400
-
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "Invalid ID format"}), 400
+    
 
 @app.route('/board/task', methods=['POST'])
 def create_task():
-    # {, userId, dashboardId, boardId, columnId, taskName}
     data = request.get_json()
-    user_id = data.get('userId')  # <--- Changed to userId
+    user_id = data.get('userId')  
     dashboard_id = data.get('dashboardId')
     board_id = data.get('boardId')
     column_id = data.get('columnId')
     task_name = data.get('taskName')
+    
     if not user_id or not dashboard_id or not board_id or not column_id or not task_name:
         return jsonify({"error": "userId, dashboardId, boardId, columnId, and taskName are required"}), 400
 
     try:
         new_task = {
-            "_id": ObjectId(), # Generate a new unique ID for this task
+            "_id": ObjectId(), 
             "taskName": task_name,
-            "assignee":""
+            "assignee": ""
         }
         
-        todolist_collection.update_one(
-            {"userId": ObjectId(user_id), "_id": ObjectId(dashboard_id), "todos._id": ObjectId(board_id), "todos.columns._id": ObjectId(column_id)},
+        # THE FIX: Check if user is the owner OR a member
+        result = todolist_collection.update_one(
             {
-                # Use named placeholders: $[board] and $[col]
+                "_id": ObjectId(dashboard_id), 
+                "$or": [
+                    {"userId": ObjectId(user_id)}, 
+                    {"member": ObjectId(user_id)}
+                ],
+                "todos._id": ObjectId(board_id), 
+                "todos.columns._id": ObjectId(column_id)
+            },
+            {
                 "$push": {"todos.$[board].columns.$[col].tasks": new_task}
             },
             array_filters=[
@@ -334,13 +348,16 @@ def create_task():
             ]
         )
         
+        if result.matched_count == 0:
+            return jsonify({"error": "Dashboard/Board/Column not found or unauthorized"}), 403
+            
         return jsonify({
             "message": "Task created successfully", 
             "taskId": str(new_task["_id"])
         }), 201
-    except Exception:
-        return jsonify({"error": "Invalid userId format"}), 400
-
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "Invalid ID format"}), 400
 
 @app.route('/board/column', methods=['PUT'])
 def update_column():
