@@ -482,6 +482,7 @@ def delete_task():
     data = request.get_json()
     user_id = data.get('userId')           # <--- Added userId requirement
     dashboard_id = data.get('dashboardId')
+    board_id = data.get('boardId')
     column_id = data.get('columnId')
     task_ids = data.get('taskId', []) # Expects a list of string IDs
 
