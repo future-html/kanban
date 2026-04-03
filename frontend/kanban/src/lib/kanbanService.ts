@@ -40,7 +40,12 @@ export const taskService = {
     
   // NEW: Assign a task to a user
   assignTask: (dashboardId, boardId, columnId, taskId, assigneeId) => 
-    axios.put(`${API_BASE_URL}/board/task/assign`, { dashboardId, boardId, columnId, taskId, assigneeId })
+    axios.put(`${API_BASE_URL}/board/task/assign`, { dashboardId, boardId, columnId, taskId, assigneeId }), 
+  // NEW: Move Task
+  moveTask: (dashboardId, taskId, oldBoardId, oldColumnId, newBoardId, newColumnId, newIndex) => 
+    axios.put(`${API_BASE_URL}/board/task/move`, { 
+      dashboardId, taskId, oldBoardId, oldColumnId, newBoardId, newColumnId, newIndex 
+    })
 };
 
 // --- USER SERVICE ---
